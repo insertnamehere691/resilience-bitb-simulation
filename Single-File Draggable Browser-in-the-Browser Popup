@@ -1,0 +1,329 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Resilience Portal - Authentication</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background: linear-gradient(135deg, #f0f4f8, #d9e2ec);
+            margin: 0;
+            padding: 0;
+            height: 100vh;
+            overflow: hidden;
+            position: relative;
+        }
+
+        /* --- FLOATING / DRAGGABLE BITB POPUP WINDOW --- */
+        .bitb-window {
+            position: absolute;
+            top: 50px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 760px;
+            background: #ffffff;
+            border-radius: 8px;
+            box-shadow: 0 16px 40px rgba(0, 0, 0, 0.3);
+            overflow: hidden;
+            border: 1px solid #cbd5e0;
+            z-index: 9999;
+        }
+
+        /* Draggable Browser Top Header Bar */
+        .browser-chrome {
+            background: #f1f5f9;
+            padding: 12px 14px;
+            display: flex;
+            align-items: center;
+            border-bottom: 1px solid #cbd5e0;
+            cursor: move; /* Indicates to the user that the window is draggable */
+            user-select: none;
+        }
+
+        .window-dots {
+            display: flex;
+            gap: 6px;
+            margin-right: 14px;
+        }
+
+        .dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+        }
+        .dot-close { background: #ef4444; }
+        .dot-min { background: #f59e0b; }
+        .dot-max { background: #10b981; }
+
+        /* Fake Address Bar */
+        .address-bar {
+            flex-grow: 1;
+            background: #ffffff;
+            border: 1px solid #cbd5e0;
+            border-radius: 4px;
+            padding: 5px 12px;
+            display: flex;
+            align-items: center;
+            font-size: 13px;
+            color: #334155;
+            pointer-events: none; /* Prevents text selection while dragging */
+        }
+
+        .lock-icon {
+            color: #16a34a;
+            margin-right: 8px;
+            font-weight: bold;
+        }
+
+        /* --- LOGIN CARD CONTENT --- */
+        .login-card {
+            background: #ffffff;
+            padding: 35px 40px;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* Logo Area */
+        .brand-header {
+            text-align: center;
+            margin-bottom: 25px;
+        }
+
+        .brand-logo {
+            width: 160px;
+            height: auto;
+            object-fit: contain;
+            margin: 0 auto 10px auto;
+            display: block;
+        }
+
+        /* Split Sections (Form Left, SSO Right) */
+        .login-body {
+            display: flex;
+            justify-content: space-between;
+            gap: 40px;
+        }
+
+        .signin-section {
+            flex: 1;
+            border-right: 1px solid #e2e8f0;
+            padding-right: 40px;
+        }
+
+        .sso-section {
+            width: 220px;
+        }
+
+        h3 {
+            margin-top: 0;
+            font-size: 16px;
+            color: #2d3748;
+            margin-bottom: 20px;
+        }
+
+        /* Inputs */
+        .form-group {
+            margin-bottom: 15px;
+        }
+
+        .form-group label {
+            display: block;
+            font-size: 12px;
+            font-weight: 600;
+            color: #4a5568;
+            margin-bottom: 5px;
+        }
+
+        .form-control {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #cbd5e0;
+            border-radius: 4px;
+            font-size: 14px;
+            box-sizing: border-box;
+        }
+
+        .form-control:focus {
+            outline: none;
+            border-color: #3182ce;
+            box-shadow: 0 0 0 3px rgba(66, 153, 225, 0.15);
+        }
+
+        .options-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 12px;
+            margin-bottom: 20px;
+            color: #4a5568;
+        }
+
+        .options-row a {
+            color: #3182ce;
+            text-decoration: none;
+        }
+
+        /* Action Buttons */
+        .btn-primary {
+            background-color: #38a169;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            font-size: 14px;
+            font-weight: 600;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+
+        .btn-primary:hover {
+            background-color: #2f855a;
+        }
+
+        .sso-btn {
+            display: block;
+            width: 100%;
+            padding: 10px;
+            margin-bottom: 10px;
+            border: none;
+            border-radius: 4px;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            text-align: center;
+        }
+
+        .btn-microsoft { background-color: #2f2f2f; color: white; }
+        .btn-google { background-color: #4285f4; color: white; }
+
+        /* Card Footer */
+        .card-footer {
+            margin-top: 30px;
+            padding-top: 15px;
+            border-top: 1px solid #e2e8f0;
+            display: flex;
+            justify-content: space-between;
+            font-size: 11px;
+            color: #718096;
+        }
+
+        .card-footer a {
+            color: #718096;
+            text-decoration: none;
+            margin-right: 15px;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Draggable BITB Popup Container -->
+    <div id="bitbWindow" class="bitb-window">
+        
+        <!-- Draggable Top Window Header -->
+        <div id="windowHeader" class="browser-chrome">
+            <div class="window-dots">
+                <div class="dot dot-close"></div>
+                <div class="dot dot-min"></div>
+                <div class="dot dot-max"></div>
+            </div>
+            <div class="address-bar">
+                <span class="lock-icon">🔒</span>
+                <span>https://sso.resilience-internal.com/auth/login</span>
+            </div>
+        </div>
+
+        <!-- Resilience Login Card Content -->
+        <div class="login-card">
+            <div class="brand-header">
+                <!-- Make sure logo.png is in the same folder -->
+                <img src="logo.png" alt="Resilience Inc. Logo" class="brand-logo">
+            </div>
+
+            <div class="login-body">
+                <!-- Left: Standard Sign In -->
+                <div class="signin-section">
+                    <h3>Sign in</h3>
+                    <form onsubmit="handleSimulationSubmit(event)">
+                        <div class="form-group">
+                            <label for="username">Username or Email</label>
+                            <input type="text" id="username" class="form-control" placeholder="user@domain.com" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="password">Password</label>
+                            <input type="password" id="password" class="form-control" placeholder="••••••••" required>
+                        </div>
+                        
+                        <div class="options-row">
+                            <label>
+                                <input type="checkbox"> Keep me signed in
+                            </label>
+                            <a href="#">Having trouble signing in?</a>
+                        </div>
+
+                        <button type="submit" class="btn-primary">Sign In</button>
+                    </form>
+                </div>
+
+                <!-- Right: SSO Providers -->
+                <div class="sso-section">
+                    <h3>Or, Sign in with</h3>
+                    <button class="sso-btn btn-microsoft">Microsoft</button>
+                    <button class="sso-btn btn-google">Google</button>
+                </div>
+            </div>
+
+            <div class="card-footer">
+                <div>
+                    <a href="#">Terms of Use</a>
+                    <a href="#">Privacy Policy</a>
+                </div>
+                <div>
+                    <span>Powered by Resilience Security</span>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- Drag-and-Drop Script for top title bar -->
+    <script>
+        const windowElem = document.getElementById("bitbWindow");
+        const headerElem = document.getElementById("windowHeader");
+
+        let isDragging = false;
+        let offsetPxX = 0;
+        let offsetPxY = 0;
+
+        headerElem.addEventListener("mousedown", (e) => {
+            isDragging = true;
+            // Get current click offset relative to the popup top-left corner
+            const rect = windowElem.getBoundingClientRect();
+            offsetPxX = e.clientX - rect.left;
+            offsetPxY = e.clientY - rect.top;
+
+            // Remove CSS transform centering so exact pixel positioning works
+            windowElem.style.transform = "none";
+            windowElem.style.left = rect.left + "px";
+            windowElem.style.top = rect.top + "px";
+        });
+
+        document.addEventListener("mousemove", (e) => {
+            if (isDragging) {
+                windowElem.style.left = (e.clientX - offsetPxX) + "px";
+                windowElem.style.top = (e.clientY - offsetPxY) + "px";
+            }
+        });
+
+        document.addEventListener("mouseup", () => {
+            isDragging = false;
+        });
+
+        function handleSimulationSubmit(event) {
+            event.preventDefault();
+            alert('[SIMULATION] Credentials submitted. Redirecting to educational training page...');
+            // Inscribe your team member's training URL here:
+            // window.location.href = "https://your-educational-landing-page.com";
+        }
+    </script>
+</body>
+</html>
